@@ -1,0 +1,7 @@
+Well done!
+
+2.c
+SalesOrderDetail is not needed here. FROM Vendor LEFT JOIN ProductVendor would be enough.
+
+3.b
+It's not one list, it's multiple columns. One column was needed.
