@@ -1,6 +1,13 @@
-
+﻿
 
 --3.
+Можем исполльзовать WITH для:
+для упрощения сложных запросов,
+когда нужно много раз обращаться к одним и тем же выборкам из таблицы,
+рекурсивные запросы.
+
+Отличия от подзапроса: не повторяется при каждом выполнении, меньше нагружает память
+
 --2.
 --data from Mockaroo 1000 rows
 USE [AdventureWorks2017]
@@ -1012,180 +1019,26 @@ insert into SAMPLE_NAME (id, first_name, last_name) values (999, 'Erskine', 'Wal
 insert into SAMPLE_NAME (id, first_name, last_name) values (1000, 'Samuel', 'Lipp');
 
 
-
-
-
 -- final table
-                       
+    
 CREATE TABLE SAMPLE_PEOPLE (
-id int IDENTITY(1,1) PRIMARY KEY, 
+id int, 
 first_name varchar(50), 
- last_name varchar(50))	
+last_name varchar(50))	
 
-Declare @i int = 1
-                      
-INSERT INTO SAMPLE_PEOPLE VALUES ('')
-WHILE @i <= 20 BEGIN
-                      
-INSERT INTO SAMPLE_CUSTOMER
-SELECT FROM SAMPLE_CUSTOMER
-                      
-SET @i = @i + 1
-                          
-END
+Declare @max_name int 
+SELECT @max_name = COUNT(*) FROM SAMPLE_NAME
 
-DELETE FROM SAMPLE_CUSTOMER WHERE id > 1000000
+declare @i int
+set @i = 1
 
+while (@i <=1000000)
+begin
+     insert into SAMPLE_PEOPLE values (@i,
+	 (SELECT first_name FROM SAMPLE_NAME WHERE id=ROUND(@max_name*rand(),0)),
+	 (SELECT last_name FROM SAMPLE_NAME WHERE id=ROUND(@max_name*rand(),0)))
+     set @i = @i + 1
+end 
 
--- 2-Populate the final customer table
-                      -- Insert one million rows (learned from Itzik Ben-Gan presentation on SQL 2008 Tips and Tricks)
-                      
-                      IF OBJECT_ID('SAMPLE_CUSTOMER') IS NOT NULL
-                      	DROP TABLE SAMPLE_CUSTOMER
-                      
-                      CREATE TABLE SAMPLE_CUSTOMER (
-                      	id int IDENTITY(1,1) PRIMARY KEY, 
-                      	no varchar(25), 
-                      	first_name varchar(50), 
-                      	last_name varchar(50), 
-                      	mi char(1),					
-                      	dob date,					
-                      	ssn varchar(9),
-                      	addr1 varchar(100), 
-                      	addr2 varchar(100),
-                      	city varchar(50), 
-                      	state_code char(2), 
-                      	zip_code varchar(5),
-                      
-                      	phone_num varchar(15))	
-                      Declare @i int = 1
-                      
-                      INSERT INTO SAMPLE_CUSTOMER (no) VALUES ('')
-                      WHILE @i <= 20 BEGIN
-                      
-                      	INSERT INTO SAMPLE_CUSTOMER (no)
-                      	SELECT no FROM SAMPLE_CUSTOMER
-                      
-                          SET @i = @i + 1
-                          
-                      END
-                      
-                      -- Shave off the excess to make it an even million
-                      DELETE FROM SAMPLE_CUSTOMER WHERE id > 1000000
-                      
-                      -- Get the max id of various tables
-                      Declare @max_name int 
-                      SELECT @max_name = COUNT(*) FROM SAMPLE_NAME
-                      
-                      Declare @max_address int 
-                      SELECT @max_address = COUNT(*) FROM SAMPLE_STREET
-                      
-                      Declare @max_csz int
-                      SELECT @max_csz = COUNT(*) FROM SAMPLE_CITY_STATE_ZIP 
-                      
-                      -- Cursor variables used everywhere
-                      DECLARE 	
-                      	@id int, @no varchar(25), @first_name varchar(50), @last_name varchar(50), @mi char(1),
-                      	@dob date, @ssn char(9), @addr1 varchar(100),  @addr2 varchar(100), 
-                      	@city varchar(30), @state_code char(2), @zip_code varchar(9),  @phone_num varchar(15) 
-                      
-                      -- Variables used to support random numbers
-                      DECLARE 
-                      	@min bigint, @max bigint, @rand as bigint, @rand1 as bigint, @rand2 as bigint, @rand3 as bigint
-                      
-                      -- One million person cursor
-                      
-                      DECLARE cur Cursor 
-                      FOR 
-                      SELECT 
-                      	id, no, first_name, last_name, mi, 
-                      	dob, ssn, addr1, addr2, 
-                      	city, state_code, zip_code, phone_num	
-                      FROM SAMPLE_CUSTOMER
-                      
-                      Open cur 
-                      
-                      Fetch NEXT FROM cur INTO 
-                      	@id, @no, @first_name, @last_name, @mi, 
-                      	@dob, @ssn, @addr1, @addr2, 
-                      	@city, @state_code, @zip_code, @phone_num	
-                      While (@@FETCH_STATUS <> -1)  
-                      BEGIN
-                      IF (@@FETCH_STATUS <> -2)
-                      
-                      -- no:  Generate a random CustomerCode varchar(25), AAA####### 
-                      SELECT @min = 1, @max = 26
-                      SELECT @rand1 = ((@max + 1) - @min) * Rand() + @min 
-                      SELECT @rand2 = ((@max + 1) - @min) * Rand() + @min 
-                      SELECT @rand3 = ((@max + 1) - @min) * Rand() + @min 
-                      
-                      SELECT @min = 1, @max = 9999999
-                      SELECT @rand = ((@max + 1) - @min) * Rand() + @min 
-                      
-                      SELECT @no = CHAR(64 + @rand1) + CHAR(64 + @rand2) + CHAR(64 + @rand3) + CAST(@rand as varchar(7))
-                      
-                      -- first_name
-                      SELECT @first_name = first_name FROM SAMPLE_NAME WHERE id = ROUND(@max_name * rand(), 0)
-                      
-                      -- last_name
-                      SELECT @last_name = last_name FROM SAMPLE_NAME WHERE id = ROUND(@max_name * rand(), 0)
-                      
-                      -- mi, Random Middle initial, 26% of column has a middle initial, 74% do not. 
-                      SELECT @min = 1, @max = 100
-                      SELECT @rand = ((@max + 1) - @min) * Rand() + @min 
-                      
-                      IF @rand > 26
-                      	SET @mi = NULL
-                      ELSE
-                      	SET @mi = CHAR(64 + @rand)
-                      
-                      -- dob: Generate a random date 
-                      SELECT @dob = dateadd(month, -1 * abs(convert(varbinary, newid()) % (90 * 12)), getdate()) 
-                      
-                      -- SSN - Random nine-digit number
-                      SELECT @min = 1, @max = 999999999
-                      Select @ssn = CAST(CAST(ROUND(((@max + 1) - @min) * Rand() + @min,0) as int)as varchar(9))
-                      
-                      -- addr1, House number - Random four-digit number + addr1
-                      SELECT @min = 1, @max = 9999
-                      Select @addr1 = CAST(ROUND(((@max + 1) - @min) * Rand() + @min,0) as varchar(4)) + ' ' + addr1 FROM SAMPLE_STREET WHERE id = ROUND(@max_address * rand(), 0)
-                      
-                      -- addr2:  5% of all addresses have a second address line, 95% do not. 
-                      SELECT @min = 1, @max = 100
-                      SELECT @rand = ((@max + 1) - @min) * Rand() + @min 
-                      
-                      IF @rand > 5
-                      	SET @mi = NULL
-                      ELSE
-                      	SELECT @addr2 = addr2 FROM SAMPLE_STREET WHERE id = ROUND(@max_address * rand(), 0)
-                      
-                      -- city
-                      SELECT @city = city FROM SAMPLE_CITY_STATE_ZIP  WHERE id = ROUND(@max_csz* rand(), 0)
-                      
-                      -- state
-                      SELECT @state_code = state_code FROM SAMPLE_CITY_STATE_ZIP  WHERE id = ROUND(@max_csz* rand(), 0)
-                      
-                      -- zip
-                      SELECT @zip_code= zip_code FROM SAMPLE_CITY_STATE_ZIP  WHERE id = ROUND(@max_csz* rand(), 0)
-                      
-                      
-                      -- Phone - Random ten-digit number
-                      SELECT @min = 1, @max = 9999999999
-                      Select @phone_num = CAST(CAST(((@max + 1) - @min) * Rand() + @min as bigint) as varchar(15))
-                      SELECT @phone_num = '(' + LEFT(@phone_num, 3) + ') ' + SUBSTRING(@phone_num, 4, 3) + '-' + RIGHT(@phone_num,4)
-                      
-                      UPDATE SAMPLE_CUSTOMER
-                      SET
-                      	no = @no, first_name = @first_name, last_name = @last_name, mi = @mi, 
-                      	dob = @dob, ssn = @ssn, addr1 = @addr1, addr2 = @addr2, 
-                      	city = @city, state_code = @state_code, zip_code = @zip_code, phone_num = @phone_num	
-                      WHERE current of cur
-                      
-                      FETCH NEXT FROM cur INTO 	
-                      	@id, @no, @first_name, @last_name, @mi, 
-                      	@dob, @ssn, @addr1, @addr2, 
-                      	@city, @state_code, @zip_code, @phone_num	
-                      END
-                      CLOSE cur
-                      DEALLOCATE cur
-                      
+SELECT* FROM SAMPLE_PEOPLE
+
