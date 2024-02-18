@@ -15,14 +15,14 @@
   --3.2
 SELECT DISTINCT *
 FROM 
-(SELECT name, price , MAX([price]) OVER (PARTITION BY [name]) AS max_price  
+(SELECT name, price , MAX([price]) OVER () AS max_price  
 FROM product) T
 WHERE price =max_price 
   --3.3
 
   SELECT  name, price 
 FROM 
-	(SELECT name, price, RANK() OVER (PARTITION BY [name] ORDER BY [price] DESC ) as rnk
+	(SELECT name, price, RANK() OVER (ORDER BY [price] DESC ) as rnk
 FROM product) T
 WHERE rnk BETWEEN 1 AND 5
 
@@ -38,8 +38,13 @@ WHERE rnk BETWEEN 1 AND 5
  WHERE p.nmae LIKE '+3%4' OR age>35
 
  --5.
- SELECT TOP 5* name, quantity
+ SELECT TOP 5 user_id, quantity
  FROM 
-	(SELECT name, COUNT(product_id) OVER (PARTITION BY name) AS "quantity"  
+	(SELECT name, COUNT(product_id) OVER (PARTITION BY user_id) AS "quantity"  
 	FROM user JOIN order ON user.id=order.user_id
-	ORDER BY quantity)
+	ORDER BY quantity DESC)
+
+	SElECT DISTINCT TOP 5 user_id, COUNT (
+
+
+
