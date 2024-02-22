@@ -52,9 +52,10 @@ GROUP BY Name
 --5. Найти список категорий для пользователя alex@gmail.com, в которых более 50 непрочитанных нотификаций
 
 SELECT n.category, COUNT (n.id) as count_n
-FROM Users u JOIN Notifications n ON u.id=n.user_id
-GROUP BY u.email, n.category
-HAVING n.is_read = 0 --или n.is_read IS FALSE в других системах
-	AND u.email = 'alex@gmail.com' 
-	AND COUNT (n.id) > 50 
+FROM 
+	(SELECT n.category, n.id
+	FROM Users u JOIN Notifications n ON u.id=n.user_id
+	WHERE u.email = 'alex@gmail.com' AND n.is_read = 0)	
+GROUP BY n.category
+HAVING COUNT (n.id) > 50 
 
